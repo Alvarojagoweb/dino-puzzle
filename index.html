@@ -1,0 +1,68 @@
+<!DOCTYPE html><html lang='id'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Dino Puzzle</title><style>
+*{box-sizing:border-box}body{margin:0;font-family:'Comic Sans MS','Chalkboard SE',sans-serif;min-height:100vh;color:#5a2d82;text-align:center;background:linear-gradient(#81d4fa,#b9f6ca) fixed;touch-action:manipulation}
+h1{margin:12px 0 4px;font-size:clamp(2rem,8vw,3.4rem);color:#e91e63;text-shadow:3px 3px #fff;animation:b 1.5s infinite}
+@keyframes b{50%{transform:translateY(-10px) rotate(-2deg)}}
+.bar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center;margin:10px}
+.lvb{font:inherit;font-size:1.1rem;font-weight:bold;border:4px solid #fff;border-radius:22px;padding:10px 16px;cursor:pointer;color:#fff;box-shadow:0 6px 0 #0003}
+.lvb[data-n='2']{background:#4caf50}.lvb[data-n='3']{background:#ff9800}.lvb[data-n='4']{background:#f44336}.lvb.sel{outline:5px solid #ffeb3b;transform:scale(1.1)}.lvb small{display:block;font-size:.8rem}
+#start,#again{font:inherit;font-size:1.5rem;font-weight:bold;color:#fff;background:#e91e63;border:5px solid #fff;border-radius:40px;padding:12px 36px;cursor:pointer;box-shadow:0 8px 0 #ad1457}
+#again{background:#4caf50;box-shadow:0 8px 0 #2e7d32;font-size:1.2rem}
+#game{display:none}.stat{background:#fff;border:4px solid #ffca28;border-radius:22px;padding:8px 16px;font-weight:bold;font-size:1.1rem}
+#board{width:min(92vw,520px);height:min(92vw,520px);margin:12px auto;display:grid;background:#fffde7;border:8px solid #ff9800;border-radius:28px;overflow:hidden;box-shadow:0 8px 0 #e65100}
+.cell{border:2px dashed #ffb74d}.cell.over{background:#fff59d}
+.piece{background-repeat:no-repeat;touch-action:none;cursor:grab;user-select:none}#board .piece{width:100%;height:100%}
+#tray{width:min(96vw,760px);margin:10px auto;padding:12px;min-height:90px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center;background:#fff9;border:4px dashed #ab47bc;border-radius:26px}
+#tray .piece{border:3px solid #fff;border-radius:14px;box-shadow:0 4px 0 #0003}
+#ghost{position:fixed;pointer-events:none;z-index:50;box-shadow:0 12px 20px #0006;border-radius:14px}
+#preview{width:80px;height:80px;border-radius:18px;border:4px solid #fff;cursor:pointer}
+#cheer{min-height:2rem;font-size:1.3rem;font-weight:bold;color:#e91e63}
+#modal{position:fixed;inset:0;background:#0006;display:none;align-items:center;justify-content:center;z-index:100}
+#modal .box{background:#fff8e1;border:8px solid #ffc107;border-radius:36px;padding:26px 36px;max-width:92vw;animation:p .6s}
+@keyframes p{from{transform:scale(0)}}#modal h2{font-size:2.3rem;margin:0;color:#e65100}#stars{font-size:3rem}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:200}
+</style></head><body>
+<h1>🦖 DINO PUZZLE 🦕</h1><p>Susun gambar dinosaurus yang lucu! 🧩</p>
+<div class='bar'><button class='lvb sel' data-n='2'>🟢 Mudah<small>Easy · 4 keping</small></button><button class='lvb' data-n='3'>🟠 Sedang<small>Medium · 9 keping</small></button><button class='lvb' data-n='4'>🔴 Sulit<small>Hard · 16 keping</small></button></div>
+<button id='start'>▶ Start Game</button>
+<div id='game'><div class='bar'><div class='stat'>⏱ <span id='time'>00:00</span></div><div class='stat'>⭐ Score: <span id='score'>0</span></div><div class='stat'>🧩 <span id='ok'>0</span>/<span id='total'>0</span></div><img id='preview' alt='contoh' title='Klik untuk mengintip'></div><div id='cheer'></div><div id='board'></div><div id='tray'></div></div>
+<div id='modal'><div class='box'><h2>🎉 Congratulations! 🎉</h2><div id='stars'></div><p>Hebat! Kamu berhasil! 🦖</p><p>⏱ <b id='rt'></b> · 👆 <b id='rm'></b> langkah<br>⭐ Score: <b id='rs'></b></p><button id='again'>🔁 Main Lagi</button></div></div>
+<canvas id='confetti'></canvas>
+<script>
+const ALL=[1,2,3,4,5,6].map(i=>`images/dino${i}.jpg`);let IMAGES=[...ALL];
+ALL.forEach(s=>{const i=new Image();i.onerror=()=>{IMAGES=IMAGES.filter(x=>x!==s)};i.src=s});
+const $=id=>document.getElementById(id);let n=2,img,slots,tray,timer,sec,moves,playing,last,AC;
+const fmt=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+function snd(f,d=.12,t='sine'){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=.15;g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
+const MSG=['Bagus! 👍','Hebat! 🌟','Keren! 🦖','Pintar! 🎈','Yey! 🎉'];
+document.querySelectorAll('.lvb').forEach(b=>b.onclick=()=>{document.querySelectorAll('.lvb').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');n=+b.dataset.n;snd(600)});
+function pieceEl(id){const d=document.createElement('div');d.className='piece';const r=Math.floor(id/n),c=id%n;d.style.backgroundImage=`url(${img})`;d.style.backgroundSize=`${n*100}% ${n*100}%`;d.style.backgroundPosition=`${c/(n-1)*100}% ${r/(n-1)*100}%`;d.addEventListener('pointerdown',e=>startDrag(e,id,d));return d}
+function render(){const b=$('board');b.innerHTML='';b.style.gridTemplate=`repeat(${n},1fr)/repeat(${n},1fr)`;
+slots.forEach((p,i)=>{const c=document.createElement('div');c.className='cell';c.dataset.i=i;if(p!==null)c.appendChild(pieceEl(p));b.appendChild(c)});
+const t=$('tray');t.innerHTML='';const s=Math.max(60,Math.min(120,Math.floor(Math.min(innerWidth*.9,700)/(n+1))));
+tray.forEach(p=>{const e=pieceEl(p);e.style.width=e.style.height=s+'px';t.appendChild(e)});
+const ok=slots.filter((p,i)=>p===i).length;$('ok').textContent=ok;$('total').textContent=n*n;$('score').textContent=ok*100*(n-1)}
+function startDrag(e,id,el){if(!playing)return;e.preventDefault();snd(440,.08);const rect=el.getBoundingClientRect();
+const g=el.cloneNode();g.id='ghost';g.style.width=rect.width+'px';g.style.height=rect.height+'px';document.body.appendChild(g);el.style.opacity=.3;
+const mv=ev=>{g.style.left=ev.clientX-rect.width/2+'px';g.style.top=ev.clientY-rect.height/2+'px';document.querySelectorAll('.cell.over').forEach(x=>x.classList.remove('over'));const t=document.elementFromPoint(ev.clientX,ev.clientY);const c=t&&t.closest('.cell');if(c)c.classList.add('over')};mv(e);
+const up=ev=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);removeEventListener('pointercancel',up);g.remove();
+const t=document.elementFromPoint(ev.clientX,ev.clientY);const cell=t&&t.closest('.cell'),inTray=t&&t.closest('#tray');const from=slots.indexOf(id);
+if(cell){const to=+cell.dataset.i;if(to!==from){const occ=slots[to];if(from>=0)slots[from]=occ;else{tray.splice(tray.indexOf(id),1);if(occ!==null)tray.push(occ)}slots[to]=id;moves++;
+if(id===to){snd(880,.2,'triangle');$('cheer').textContent=MSG[Math.random()*MSG.length|0]}else{snd(300,.12);$('cheer').textContent='Coba lagi ya! 💪'}}}
+else if(inTray&&from>=0){slots[from]=null;tray.push(id);moves++}
+render();check()};
+addEventListener('pointermove',mv);addEventListener('pointerup',up);addEventListener('pointercancel',up)}
+function check(){if(slots.every((p,i)=>p===i)){playing=false;clearInterval(timer);
+const fin=Math.max(0,n*n*100*(n-1)+Math.max(0,n*n*20-sec)*5*(n-1)-Math.max(0,moves-n*n)*10);
+$('score').textContent=fin;$('rt').textContent=fmt(sec);$('rm').textContent=moves;$('rs').textContent=fin;
+const st=moves<=n*n+2?3:moves<=n*n*2?2:1;$('stars').textContent='⭐'.repeat(st)+'☆'.repeat(3-st);
+setTimeout(()=>{$('modal').style.display='flex';confetti();[523,659,784,1047].forEach((f,i)=>setTimeout(()=>snd(f,.25,'triangle'),i*150))},500)}}
+function startGame(){if(!IMAGES.length){alert('Gambar tidak ditemukan di folder images/');return}
+let k;do{k=Math.floor(Math.random()*IMAGES.length)}while(IMAGES[k]===last&&IMAGES.length>1);last=img=IMAGES[k];$('preview').src=img;
+slots=Array(n*n).fill(null);tray=[...Array(n*n).keys()].sort(()=>Math.random()-.5);sec=0;moves=0;playing=true;$('time').textContent='00:00';$('cheer').textContent='Ayo susun puzzlenya! 🧩';
+clearInterval(timer);timer=setInterval(()=>{sec++;$('time').textContent=fmt(sec)},1000);$('game').style.display='block';$('modal').style.display='none';$('start').textContent='🔄 Main Lagi';snd(660,.15);render()}
+$('start').onclick=startGame;$('again').onclick=startGame;$('preview').onclick=e=>{e.target.style.opacity=e.target.style.opacity==='0.1'?1:.1};
+addEventListener('resize',()=>playing&&render());
+function confetti(){const cv=$('confetti'),x=cv.getContext('2d');cv.width=innerWidth;cv.height=innerHeight;const cols=['#f44336','#ff9800','#ffeb3b','#4caf50','#2196f3','#9c27b0','#e91e63'];
+const ps=Array.from({length:240},()=>({x:Math.random()*cv.width,y:-Math.random()*cv.height*.6,vx:Math.random()*4-2,vy:Math.random()*4+2,s:Math.random()*10+5,c:cols[Math.random()*7|0],r:Math.random()*6}));let f=0;
+(function a(){x.clearRect(0,0,cv.width,cv.height);ps.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.r+=.2;x.save();x.translate(p.x,p.y);x.rotate(p.r);x.fillStyle=p.c;x.fillRect(-p.s/2,-p.s/2,p.s,p.s*.6);x.restore()});if(++f<360)requestAnimationFrame(a);else x.clearRect(0,0,cv.width,cv.height)})()}
+</script></body></html>
