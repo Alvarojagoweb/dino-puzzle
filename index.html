@@ -28,7 +28,7 @@ h1{margin:12px 0 4px;font-size:clamp(2rem,8vw,3.4rem);color:#e91e63;text-shadow:
 <div id='modal'><div class='box'><h2>🎉 Congratulations! 🎉</h2><div id='stars'></div><p>Hebat! Kamu berhasil! 🦖</p><p>⏱ <b id='rt'></b> · 👆 <b id='rm'></b> langkah<br>⭐ Score: <b id='rs'></b></p><button id='again'>🔁 Main Lagi</button></div></div>
 <canvas id='confetti'></canvas>
 <script>
-const ALL=[1,2,3,4,5,6].map(i=>`images/dino${i}.jpg`);let IMAGES=[...ALL];
+const ALL=['Unknown.webp','Unknown-2.webp','Unknown-3.webp','Unknown-4.webp','Unknown-5.webp','Unknown.png'];let IMAGES=[...ALL];
 ALL.forEach(s=>{const i=new Image();i.onerror=()=>{IMAGES=IMAGES.filter(x=>x!==s)};i.src=s});
 const $=id=>document.getElementById(id);let n=2,img,slots,tray,timer,sec,moves,playing,last,AC;
 const fmt=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
